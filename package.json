@@ -1,0 +1,13 @@
+{
+  "name": "com.nomlas.compactworldboard",
+  "displayName": "Compact World Board",
+  "version": "0.1.0",
+  "unity": "2022.3",
+  "description": "Compact World Board for VRChat worlds.",
+  "vpmDependencies": {
+    "com.vrchat.base": "3.10.x"
+  },
+  "author": {
+    "name": "nomlas"
+  }
+}

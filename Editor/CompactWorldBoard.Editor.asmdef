@@ -1,0 +1,20 @@
+{
+    "name": "CompactWorldBoard.Editor",
+    "rootNamespace": "",
+    "references": [
+        "VRC.SDKBase.Editor",
+        "CompactWorldBoard",
+        "UniTask"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
