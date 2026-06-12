@@ -320,7 +320,6 @@ MonoBehaviour:
     PrefabModifications: []
     SerializationNodes: []
   _udonSharpBackingUdonBehaviour: {fileID: 2226880313795651039}
-  testCube: {fileID: 0}
   buttonText: {fileID: 891097221099838233}
   selectorParent: {fileID: 8390126260676539058}
   cubeMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
