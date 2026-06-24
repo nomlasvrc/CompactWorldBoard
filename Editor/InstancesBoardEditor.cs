@@ -57,10 +57,5 @@ namespace Nomlas.CompactWorldBoard.Editor
             EditorGUILayout.Space();
             EditorGUILayout.PropertyField(canEnterProp, new GUIContent("ポータルに入れるか（通常オフ）"));
         }
-
-        private protected override void AddOrSetWorld(string worldId)
-        {
-            worldIdProp.stringValue = worldId;
-        }
     }
 }
