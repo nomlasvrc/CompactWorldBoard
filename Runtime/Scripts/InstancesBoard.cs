@@ -11,16 +11,6 @@ namespace Nomlas.CompactWorldBoard
 
         [SerializeField] public string worldId;
         [SerializeField] public string[] instanceIds;
-        [Space]
-        [SerializeField] public UserOrGroup userOrGroup;
-        [Space]
-        [SerializeField] public InstanceType instanceType;
-        [SerializeField] public string userId;
-        [Space]
-        [SerializeField] public GroupType groupType;
-        [SerializeField] public string groupId;
-        [Space]
-        [SerializeField] public Region region = Region.jp;
 
         public override void Create()
         {
@@ -30,21 +20,23 @@ namespace Nomlas.CompactWorldBoard
                 child.SetActive(true);
                 var portalManager = child.GetComponent<VRCPortalMarkerManager>();
                 portalManager.SetBoardType(BoardType);
-                switch (userOrGroup)
-                {
-                    case UserOrGroup.Public:
-                        portalManager.SetPortal(NewPortal(worldId, instanceId, region));
-                        break;
-                    case UserOrGroup.User:
-                        portalManager.SetPortal(NewPortal(worldId, instanceId, userId, instanceType, region));
-                        break;
-                    case UserOrGroup.Group:
-                        portalManager.SetPortal(NewPortal(worldId, instanceId, groupId, groupType, region));
-                        break;
-                    default:
-                        Debug.LogError("ユーザーまたはグループのタイプが不正です。");
-                        break;
-                }
+                portalManager.SetPortal(_NewPortal(instanceId));
+            }
+        }
+
+        private GameObject _NewPortal(string instanceId)
+        {
+            switch (userOrGroup)
+            {
+                case UserOrGroup.Public:
+                    return NewPortal(worldId, instanceId, region);
+                case UserOrGroup.User:
+                    return NewPortal(worldId, instanceId, userId, instanceType, region);
+                case UserOrGroup.Group:
+                    return NewPortal(worldId, instanceId, groupId, groupType, region);
+                default:
+                    Debug.LogError("ユーザーまたはグループのタイプが不正です。");
+                    return null;
             }
         }
     }

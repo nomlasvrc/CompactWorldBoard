@@ -11,15 +11,6 @@ namespace Nomlas.CompactWorldBoard
 
         [SerializeField] public string[] worldIds;
         [SerializeField] public string instanceId;
-        [SerializeField] public UserOrGroup userOrGroup;
-        [Space]
-        [SerializeField] public InstanceType instanceType;
-        [SerializeField] public string userId;
-        [Space]
-        [SerializeField] public GroupType groupType;
-        [SerializeField] public string groupId;
-        [Space]
-        [SerializeField] public Region region = Region.jp;
 
         public override void Create()
         {
@@ -36,25 +27,18 @@ namespace Nomlas.CompactWorldBoard
 
         private GameObject _NewPortal(string worldId)
         {
-            GameObject newPortal;
-            if (userOrGroup == UserOrGroup.Public)
+            switch (userOrGroup)
             {
-                newPortal = NewPortal(worldId, instanceId, region);
+                case UserOrGroup.Public:
+                    return NewPortal(worldId, instanceId, region);
+                case UserOrGroup.User:
+                    return NewPortal(worldId, instanceId, userId, instanceType, region);
+                case UserOrGroup.Group:
+                    return NewPortal(worldId, instanceId, groupId, groupType, region);
+                default:
+                    Debug.LogError("ユーザーまたはグループのタイプが不正です。");
+                    return null;
             }
-            else if (userOrGroup == UserOrGroup.User)
-            {
-                newPortal = NewPortal(worldId, instanceId, userId, instanceType, region);
-            }
-            else if (userOrGroup == UserOrGroup.Group)
-            {
-                newPortal = NewPortal(worldId, instanceId, groupId, groupType, region);
-            }
-            else
-            {
-                Debug.LogError("ユーザーまたはグループのタイプが不正です。");
-                return null;
-            }
-            return newPortal;
         }
     }
 }
