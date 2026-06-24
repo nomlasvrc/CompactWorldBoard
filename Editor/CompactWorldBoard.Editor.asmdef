@@ -4,7 +4,8 @@
     "references": [
         "VRC.SDKBase.Editor",
         "CompactWorldBoard",
-        "UniTask"
+        "UniTask",
+        "UdonSharp.Runtime"
     ],
     "includePlatforms": [
         "Editor"

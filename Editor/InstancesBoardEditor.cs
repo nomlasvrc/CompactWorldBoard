@@ -1,5 +1,6 @@
-using System.Linq;
+
 using UnityEditor;
+using UnityEngine;
 
 namespace Nomlas.CompactWorldBoard.Editor
 {
@@ -7,9 +8,7 @@ namespace Nomlas.CompactWorldBoard.Editor
     public class InstancesBoardEditor : BoardEditor
     {
         SerializedProperty worldIdProp;
-        SerializedProperty instanceIdPrefixProp;
-        SerializedProperty instanceIdSuffixProp;
-        SerializedProperty instanceCountProp;
+        SerializedProperty instanceIdsProp;
         SerializedProperty userOrGroupProp;
         SerializedProperty instanceTypeProp;
         SerializedProperty userIdProp;
@@ -21,9 +20,7 @@ namespace Nomlas.CompactWorldBoard.Editor
         private protected override void GetProperties()
         {
             worldIdProp = serializedObject.FindProperty("worldId");
-            instanceIdPrefixProp = serializedObject.FindProperty("instanceIdPrefix");
-            instanceIdSuffixProp = serializedObject.FindProperty("instanceIdSuffix");
-            instanceCountProp = serializedObject.FindProperty("instanceCount");
+            instanceIdsProp = serializedObject.FindProperty("instanceIds");
             userOrGroupProp = serializedObject.FindProperty("userOrGroup");
             instanceTypeProp = serializedObject.FindProperty("instanceType");
             userIdProp = serializedObject.FindProperty("userId");
@@ -38,11 +35,7 @@ namespace Nomlas.CompactWorldBoard.Editor
         {
             EditorGUILayout.PropertyField(worldIdProp);
             EditorGUILayout.Space();
-            EditorGUILayout.PropertyField(instanceIdPrefixProp);
-            EditorGUILayout.PropertyField(instanceIdSuffixProp);
-            EditorGUILayout.PropertyField(instanceCountProp);
-            EditorGUILayout.LabelField("作成されるインスタンス", EditorStyles.boldLabel);
-            EditorGUILayout.TextArea(Enumerable.Range(0, instanceCountProp.intValue).Select(i => $"#{instanceIdPrefixProp.stringValue}{(char)('A' + i)}{instanceIdSuffixProp.stringValue}").Aggregate((a, b) => $"{a}\n{b}"));
+            DrawInstanceIdsGUI();
             EditorGUILayout.PropertyField(userOrGroupProp);
             if (userOrGroupProp.enumValueIndex == (int)UserOrGroup.User)
             {
@@ -58,6 +51,27 @@ namespace Nomlas.CompactWorldBoard.Editor
 
             EditorGUILayout.Space();
             EditorGUILayout.PropertyField(canEnterProp);
+        }
+
+        private void DrawInstanceIdsGUI()
+        {
+            EditorGUILayout.LabelField("インスタンスID", EditorStyles.boldLabel);
+            for (int i = 0; i < instanceIdsProp.arraySize; i++)
+            {
+                EditorGUILayout.BeginHorizontal();
+                EditorGUILayout.PropertyField(instanceIdsProp.GetArrayElementAtIndex(i), new GUIContent($"インスタンスID {i + 1}"));
+                if (GUILayout.Button("削除"))
+                {
+                    instanceIdsProp.DeleteArrayElementAtIndex(i);
+                }
+                EditorGUILayout.EndHorizontal();
+            }
+
+            if (GUILayout.Button("インスタンスIDを追加"))
+            {
+                instanceIdsProp.arraySize++;
+            }
+            EditorGUILayout.Space();
         }
 
         private protected override void AddOrSetWorld(string worldId)

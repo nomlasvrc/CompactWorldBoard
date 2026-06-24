@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEditor;
 
 namespace Nomlas.CompactWorldBoard.Editor
@@ -5,6 +6,7 @@ namespace Nomlas.CompactWorldBoard.Editor
     [CustomEditor(typeof(WorldsBoard))]
     public class WorldsBoardEditor : BoardEditor
     {
+        WorldsBoard worldsBoard;
         SerializedProperty worldIdsProp;
         SerializedProperty instanceIdProp;
         SerializedProperty userOrGroupProp;
@@ -17,6 +19,8 @@ namespace Nomlas.CompactWorldBoard.Editor
         SerializedProperty canEnterProp;
         private protected override void GetProperties()
         {
+            worldsBoard = (WorldsBoard)target;
+
             worldIdsProp = serializedObject.FindProperty("worldIds");
             instanceIdProp = serializedObject.FindProperty("instanceId");
             userOrGroupProp = serializedObject.FindProperty("userOrGroup");
@@ -52,8 +56,9 @@ namespace Nomlas.CompactWorldBoard.Editor
 
         private protected override void AddOrSetWorld(string worldId)
         {
-            worldIdsProp.arraySize++;
-            worldIdsProp.GetArrayElementAtIndex(worldIdsProp.arraySize - 1).stringValue = worldId;
+            var worldIdsList = new List<string>(worldsBoard.worldIds);
+            worldIdsList.Add(worldId);
+            worldsBoard.worldIds = worldIdsList.ToArray();
         }
     }
 }
