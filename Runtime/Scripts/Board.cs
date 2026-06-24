@@ -11,5 +11,14 @@ namespace Nomlas.CompactWorldBoard
         [SerializeField] public GroupType groupType;
         [SerializeField] public string groupId;
         [SerializeField] public Region region = Region.jp;
+
+        private protected void CreateAndSetPortal(GameObject newPortal)
+        {
+            GameObject child = GameObject.Instantiate(content, contentParent);
+            child.SetActive(true);
+            var portalManager = child.GetComponent<VRCPortalMarkerManager>();
+            portalManager.SetBoardType(BoardType);
+            portalManager.SetPortal(newPortal);
+        }
     }
 }

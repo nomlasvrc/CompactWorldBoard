@@ -16,12 +16,8 @@ namespace Nomlas.CompactWorldBoard
         {
             foreach (var worldId in worldIds)
             {
-                GameObject child = GameObject.Instantiate(content, contentParent);
-                child.SetActive(true);
-                var portalManager = child.GetComponent<VRCPortalMarkerManager>();
-                portalManager.SetBoardType(BoardType);
                 var newPortal = _NewPortal(worldId);
-                portalManager.SetPortal(newPortal);
+                CreateAndSetPortal(newPortal);
             }
         }
 
