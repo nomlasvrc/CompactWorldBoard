@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEditor;
+using UnityEngine;
 
 namespace Nomlas.CompactWorldBoard.Editor
 {
@@ -35,23 +36,29 @@ namespace Nomlas.CompactWorldBoard.Editor
 
         private protected override void DrawInspectorGUI()
         {
-            EditorGUILayout.PropertyField(worldIdsProp, true);
-            EditorGUILayout.PropertyField(instanceIdProp);
-            EditorGUILayout.PropertyField(userOrGroupProp);
+            EditorGUILayout.LabelField("生成するインスタンスの設定", EditorStyles.boldLabel);
+            EditorGUI.indentLevel++;
+            EditorGUILayout.PropertyField(worldIdsProp, new GUIContent("ワールドID"), true);
+            EditorGUILayout.Space();
+            EditorGUILayout.PropertyField(instanceIdProp, new GUIContent("インスタンスID"));
+            EditorGUILayout.Space();
+            EditorGUILayout.PropertyField(userOrGroupProp, new GUIContent("インスタンスのオーナー"));
+            EditorGUILayout.Space();
             if (userOrGroupProp.enumValueIndex == (int)UserOrGroup.User)
             {
-                EditorGUILayout.PropertyField(instanceTypeProp);
-                EditorGUILayout.PropertyField(userIdProp);
+                EditorGUILayout.PropertyField(instanceTypeProp, new GUIContent("インスタンスの種類"));
+                EditorGUILayout.PropertyField(userIdProp, new GUIContent("ユーザーID"));
             }
             else if (userOrGroupProp.enumValueIndex == (int)UserOrGroup.Group)
             {
-                EditorGUILayout.PropertyField(groupTypeProp);
-                EditorGUILayout.PropertyField(groupIdProp);
+                EditorGUILayout.PropertyField(groupTypeProp, new GUIContent("グループの種類"));
+                EditorGUILayout.PropertyField(groupIdProp, new GUIContent("グループID"));
             }
-            EditorGUILayout.PropertyField(regionProp);
-
             EditorGUILayout.Space();
-            EditorGUILayout.PropertyField(canEnterProp);
+            EditorGUILayout.PropertyField(regionProp, new GUIContent("サーバーリージョン"));
+            EditorGUI.indentLevel--;
+            EditorGUILayout.Space();
+            EditorGUILayout.PropertyField(canEnterProp, new GUIContent("ポータルに入れるか（通常オフ）"));
         }
 
         private protected override void AddOrSetWorld(string worldId)
