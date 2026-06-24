@@ -35,7 +35,8 @@ namespace Nomlas.CompactWorldBoard.Editor
         {
             EditorGUILayout.PropertyField(worldIdProp);
             EditorGUILayout.Space();
-            DrawInstanceIdsGUI();
+            EditorGUILayout.PropertyField(instanceIdsProp, true);
+            EditorGUILayout.Space();
             EditorGUILayout.PropertyField(userOrGroupProp);
             if (userOrGroupProp.enumValueIndex == (int)UserOrGroup.User)
             {
@@ -51,27 +52,6 @@ namespace Nomlas.CompactWorldBoard.Editor
 
             EditorGUILayout.Space();
             EditorGUILayout.PropertyField(canEnterProp);
-        }
-
-        private void DrawInstanceIdsGUI()
-        {
-            EditorGUILayout.LabelField("インスタンスID", EditorStyles.boldLabel);
-            for (int i = 0; i < instanceIdsProp.arraySize; i++)
-            {
-                EditorGUILayout.BeginHorizontal();
-                EditorGUILayout.PropertyField(instanceIdsProp.GetArrayElementAtIndex(i), new GUIContent($"インスタンスID {i + 1}"));
-                if (GUILayout.Button("削除"))
-                {
-                    instanceIdsProp.DeleteArrayElementAtIndex(i);
-                }
-                EditorGUILayout.EndHorizontal();
-            }
-
-            if (GUILayout.Button("インスタンスIDを追加"))
-            {
-                instanceIdsProp.arraySize++;
-            }
-            EditorGUILayout.Space();
         }
 
         private protected override void AddOrSetWorld(string worldId)
