@@ -24,14 +24,13 @@ namespace Nomlas.CompactWorldBoard.Editor
             serializedObject.Update();
 
             DrawInspectorGUI();
-
+            EditorGUILayout.Space(20);
+            DrawFavoriteWorldsGUI();
+            EditorGUILayout.Space(20);
             EditorGUI.indentLevel++;
             fold = EditorGUILayout.Foldout(fold, "Default Inspector");
             if (fold) DrawDefaultInspector();
             EditorGUI.indentLevel--;
-
-            EditorGUILayout.Space();
-            DrawFavoriteWorldsGui();
 
             serializedObject.ApplyModifiedProperties();
         }
@@ -44,7 +43,7 @@ namespace Nomlas.CompactWorldBoard.Editor
         bool isFetchingFavoritedWorlds;
         string favoriteWorldsError;
 
-        private void DrawFavoriteWorldsGui()
+        private void DrawFavoriteWorldsGUI()
         {
             EditorGUILayout.LabelField("お気に入り登録されたワールドを追加", EditorStyles.boldLabel);
             if (!string.IsNullOrEmpty(favoriteWorldsError))
