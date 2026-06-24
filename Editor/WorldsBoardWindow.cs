@@ -27,13 +27,19 @@ namespace Nomlas.CompactWorldBoard.Editor
         bool isFetchingFavoriteWorldGroups;
         bool isFetchingFavoritedWorlds;
 
-        const float WorldListMinHeight = 200f;
-        const float FavoriteListMinHeight = 240f;
+        const float WindowMinWidth = 760f;
+        const float WindowMinHeight = 520f;
+        const float WorldListMinHeight = 360f;
+        const float FavoriteListHeight = 180f;
+        const float IndexWidth = 28f;
+        const float AuthorWidth = 120f;
+        const float CapacityWidth = 60f;
+        const float OperationWidth = 190f;
 
         [MenuItem("Tools/Compact World Board/Worlds Board")]
         public static void OpenFromMenu()
         {
-            var selectedBoard = Selection.activeGameObject == null ? null : Selection.activeGameObject.GetComponent<WorldsBoard>();
+            var selectedBoard = GetSelectedBoard();
             if (selectedBoard != null)
             {
                 Open(selectedBoard);
@@ -41,16 +47,15 @@ namespace Nomlas.CompactWorldBoard.Editor
             }
 
             var window = GetWindow<WorldsBoardWindow>("Worlds Board");
-            window.minSize = new Vector2(760, 420);
+            window.minSize = new Vector2(WindowMinWidth, WindowMinHeight);
             window.Show();
         }
 
         public static void Open(WorldsBoard board)
         {
             var window = GetWindow<WorldsBoardWindow>("Worlds Board");
-            window.worldsBoard = board;
-            window.minSize = new Vector2(760, 420);
-            window.SyncCacheWithBoard();
+            window.SetBoard(board);
+            window.minSize = new Vector2(WindowMinWidth, WindowMinHeight);
             window.Show();
             window.Focus();
         }
@@ -63,12 +68,10 @@ namespace Nomlas.CompactWorldBoard.Editor
 
         void OnSelectionChange()
         {
-            if (Selection.activeGameObject == null) return;
-            var selectedBoard = Selection.activeGameObject.GetComponent<WorldsBoard>();
+            var selectedBoard = GetSelectedBoard();
             if (selectedBoard == null || selectedBoard == worldsBoard) return;
 
-            worldsBoard = selectedBoard;
-            SyncCacheWithBoard();
+            SetBoard(selectedBoard);
             Repaint();
         }
 
@@ -76,18 +79,35 @@ namespace Nomlas.CompactWorldBoard.Editor
         {
             if (worldsBoard == null)
             {
-                EditorGUILayout.HelpBox("編集する WorldsBoard をインスペクターから開くか、シーン上で選択してください。", MessageType.Info);
+                DrawNoBoardGUI();
                 return;
             }
 
+            DrawToolbar();
+            if (worldsBoard == null) return;
+
+            EditorGUILayout.Space();
+            DrawAddWorldGUI();
+            EditorGUILayout.Space();
+            DrawWorldListGUI();
+            EditorGUILayout.Space();
+            DrawFavoriteWorldsGUI();
+        }
+
+        void DrawNoBoardGUI()
+        {
+            EditorGUILayout.HelpBox("編集する WorldsBoard をインスペクターから開くか、シーン上で選択してください。", MessageType.Info);
+        }
+
+        void DrawToolbar()
+        {
             using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar))
             {
                 EditorGUI.BeginChangeCheck();
                 var selectedBoard = (WorldsBoard)EditorGUILayout.ObjectField(worldsBoard, typeof(WorldsBoard), true);
                 if (EditorGUI.EndChangeCheck())
                 {
-                    worldsBoard = selectedBoard;
-                    SyncCacheWithBoard();
+                    SetBoard(selectedBoard);
                 }
                 GUILayout.FlexibleSpace();
                 using (new EditorGUI.DisabledScope(worldsBoard == null))
@@ -98,19 +118,6 @@ namespace Nomlas.CompactWorldBoard.Editor
                     }
                 }
             }
-
-            if (worldsBoard == null)
-            {
-                Repaint();
-                return;
-            }
-
-            EditorGUILayout.Space();
-            DrawAddWorldGUI();
-            EditorGUILayout.Space();
-            DrawWorldListGUI();
-            EditorGUILayout.Space();
-            DrawFavoriteWorldsGUI();
         }
 
         void DrawAddWorldGUI()
@@ -134,7 +141,7 @@ namespace Nomlas.CompactWorldBoard.Editor
         {
             using (new EditorGUILayout.HorizontalScope())
             {
-                EditorGUILayout.LabelField($"ワールド一覧 ({worldsBoard.worldIds?.Length ?? 0} 件)", EditorStyles.boldLabel);
+                EditorGUILayout.LabelField($"ワールド一覧 ({WorldIds.Length} 件)", EditorStyles.boldLabel);
                 GUILayout.FlexibleSpace();
                 filterText = GUILayout.TextField(filterText ?? string.Empty, GUI.skin.FindStyle("ToolbarSeachTextField") ?? EditorStyles.toolbarTextField, GUILayout.Width(220));
                 if (GUILayout.Button("x", GUI.skin.FindStyle("ToolbarSeachCancelButton") ?? EditorStyles.toolbarButton, GUILayout.Width(22)))
@@ -152,11 +159,11 @@ namespace Nomlas.CompactWorldBoard.Editor
             }
 
             DrawWorldListHeader();
-            worldListScroll = EditorGUILayout.BeginScrollView(worldListScroll, GUILayout.MinHeight(WorldListMinHeight));
-            var worldIds = worldsBoard.worldIds ?? new string[0];
+            worldListScroll = EditorGUILayout.BeginScrollView(worldListScroll, GUILayout.MinHeight(WorldListMinHeight), GUILayout.ExpandHeight(true));
+            var worldIds = WorldIds;
             for (var i = 0; i < worldIds.Length; i++)
             {
-                if (!MatchesFilter(worldIds[i])) continue;// IDまたはワールド名または作者名でフィルター
+                if (!MatchesFilter(worldIds[i])) continue;
                 DrawWorldRow(i, worldIds[i]);
             }
             EditorGUILayout.EndScrollView();
@@ -166,13 +173,12 @@ namespace Nomlas.CompactWorldBoard.Editor
         {
             using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
             {
-                GUILayout.Label("#", EditorStyles.miniBoldLabel, GUILayout.Width(28));
+                GUILayout.Label("#", EditorStyles.miniBoldLabel, GUILayout.Width(IndexWidth));
                 GUILayout.Label("ワールドID", EditorStyles.miniBoldLabel, GUILayout.MinWidth(180));
                 GUILayout.Label("名前", EditorStyles.miniBoldLabel, GUILayout.MinWidth(180));
-                GUILayout.Label("作者", EditorStyles.miniBoldLabel, GUILayout.Width(120));
-                GUILayout.Label("人数", EditorStyles.miniBoldLabel, GUILayout.Width(60));
-                GUILayout.Label("訪問", EditorStyles.miniBoldLabel, GUILayout.Width(70));
-                GUILayout.Label("操作", EditorStyles.miniBoldLabel, GUILayout.Width(190));
+                GUILayout.Label("作者", EditorStyles.miniBoldLabel, GUILayout.Width(AuthorWidth));
+                GUILayout.Label("人数", EditorStyles.miniBoldLabel, GUILayout.Width(CapacityWidth));
+                GUILayout.Label("操作", EditorStyles.miniBoldLabel, GUILayout.Width(OperationWidth));
             }
         }
 
@@ -181,7 +187,7 @@ namespace Nomlas.CompactWorldBoard.Editor
             var cachedWorld = FindWorld(worldId);
             using (new EditorGUILayout.HorizontalScope())
             {
-                GUILayout.Label((index + 1).ToString(), GUILayout.Width(28));
+                GUILayout.Label((index + 1).ToString(), GUILayout.Width(IndexWidth));
 
                 EditorGUI.BeginChangeCheck();
                 var editedWorldId = EditorGUILayout.TextField(worldId, GUILayout.MinWidth(180));
@@ -191,15 +197,14 @@ namespace Nomlas.CompactWorldBoard.Editor
                 }
 
                 GUILayout.Label(cachedWorld?.Name ?? "未取得", GUILayout.MinWidth(180));
-                GUILayout.Label(cachedWorld?.AuthorName ?? "-", GUILayout.Width(120));
-                GUILayout.Label(cachedWorld == null ? "-" : cachedWorld.Capacity.ToString(), GUILayout.Width(60));
-                GUILayout.Label(cachedWorld == null ? "-" : cachedWorld.Visits.ToString(), GUILayout.Width(70));
+                GUILayout.Label(cachedWorld?.AuthorName ?? "-", GUILayout.Width(AuthorWidth));
+                GUILayout.Label(cachedWorld == null ? "-" : cachedWorld.Capacity.ToString(), GUILayout.Width(CapacityWidth));
 
                 using (new EditorGUI.DisabledScope(index == 0))
                 {
                     if (GUILayout.Button("↑", GUILayout.Width(32))) MoveWorld(index, index - 1);
                 }
-                using (new EditorGUI.DisabledScope(index >= (worldsBoard.worldIds?.Length ?? 0) - 1))
+                using (new EditorGUI.DisabledScope(index >= WorldIds.Length - 1))
                 {
                     if (GUILayout.Button("↓", GUILayout.Width(32))) MoveWorld(index, index + 1);
                 }
@@ -244,7 +249,7 @@ namespace Nomlas.CompactWorldBoard.Editor
 
             if (favorites.Count == 0) return;
 
-            favoriteListScroll = EditorGUILayout.BeginScrollView(favoriteListScroll, GUILayout.Height(FavoriteListMinHeight));
+            favoriteListScroll = EditorGUILayout.BeginScrollView(favoriteListScroll, GUILayout.Height(FavoriteListHeight));
             foreach (var favorite in favorites)
             {
                 using (new EditorGUILayout.HorizontalScope())
@@ -253,7 +258,7 @@ namespace Nomlas.CompactWorldBoard.Editor
                     GUILayout.Label(favorite.AuthorName, GUILayout.Width(120));
                     GUILayout.Label(favorite.ID, GUILayout.Width(300));
 
-                    var isWorldIdInList = (worldsBoard.worldIds ?? new string[0]).Contains(favorite.ID);
+                    var isWorldIdInList = WorldIds.Contains(favorite.ID);
                     using (new EditorGUI.DisabledScope(isWorldIdInList))
                     {
                         if (GUILayout.Button(isWorldIdInList ? "追加済み" : "追加", GUILayout.Width(80)))
@@ -272,7 +277,7 @@ namespace Nomlas.CompactWorldBoard.Editor
             var progressId = UnityEditor.Progress.Start("ワールド情報を取得中...");
             try
             {
-                var worldIds = (worldsBoard.worldIds ?? new string[0])
+                var worldIds = WorldIds
                     .Where(id => !string.IsNullOrWhiteSpace(id) && FindWorld(id) == null)
                     .Distinct()
                     .ToArray();
@@ -381,46 +386,56 @@ namespace Nomlas.CompactWorldBoard.Editor
         {
             if (string.IsNullOrWhiteSpace(worldId)) return;
 
-            var worldIds = (worldsBoard.worldIds ?? new string[0]).ToList();
+            var worldIds = WorldIds.ToList();
             if (worldIds.Contains(worldId)) return;
 
             RecordBoard("Add world");
             worldIds.Add(worldId);
-            worldsBoard.worldIds = worldIds.ToArray();
-            EditorUtility.SetDirty(worldsBoard);
+            ApplyWorldIds(worldIds);
         }
 
         void SetWorldId(int index, string worldId)
         {
             if (!IsValidIndex(index)) return;
 
-            var worldIds = worldsBoard.worldIds.ToArray();
+            var worldIds = WorldIds.ToArray();
             RecordBoard("Edit world ID");
             worldIds[index] = worldId;
-            worldsBoard.worldIds = worldIds;
-            EditorUtility.SetDirty(worldsBoard);
+            ApplyWorldIds(worldIds);
         }
 
         void RemoveWorldAt(int index)
         {
             if (!IsValidIndex(index)) return;
 
-            var worldIds = worldsBoard.worldIds.ToList();
+            var worldIds = WorldIds.ToList();
             RecordBoard("Remove world");
             worldIds.RemoveAt(index);
-            worldsBoard.worldIds = worldIds.ToArray();
-            EditorUtility.SetDirty(worldsBoard);
+            ApplyWorldIds(worldIds);
         }
 
         void MoveWorld(int fromIndex, int toIndex)
         {
             if (!IsValidIndex(fromIndex) || !IsValidIndex(toIndex)) return;
 
-            var worldIds = worldsBoard.worldIds.ToList();
+            var worldIds = WorldIds.ToList();
             var worldId = worldIds[fromIndex];
             RecordBoard("Reorder worlds");
             worldIds.RemoveAt(fromIndex);
             worldIds.Insert(toIndex, worldId);
+            ApplyWorldIds(worldIds);
+        }
+
+        void SetBoard(WorldsBoard board)
+        {
+            worldsBoard = board;
+            SyncCacheWithBoard();
+        }
+
+        void ApplyWorldIds(IEnumerable<string> worldIds)
+        {
+            if (worldsBoard == null) return;
+
             worldsBoard.worldIds = worldIds.ToArray();
             EditorUtility.SetDirty(worldsBoard);
         }
@@ -470,12 +485,19 @@ namespace Nomlas.CompactWorldBoard.Editor
 
         bool IsValidIndex(int index)
         {
-            return worldsBoard != null && worldsBoard.worldIds != null && index >= 0 && index < worldsBoard.worldIds.Length;
+            return index >= 0 && index < WorldIds.Length;
         }
 
         void RecordBoard(string operation)
         {
             Undo.RecordObject(worldsBoard, operation);
+        }
+
+        string[] WorldIds => worldsBoard?.worldIds ?? new string[0];
+
+        static WorldsBoard GetSelectedBoard()
+        {
+            return Selection.activeGameObject == null ? null : Selection.activeGameObject.GetComponent<WorldsBoard>();
         }
 
         [Serializable]
@@ -485,7 +507,6 @@ namespace Nomlas.CompactWorldBoard.Editor
             public string Name;
             public string AuthorName;
             public int Capacity;
-            public int Visits;
 
             public static WorldCache FromWorld(VRCWorld world)
             {
@@ -494,8 +515,7 @@ namespace Nomlas.CompactWorldBoard.Editor
                     ID = world.ID,
                     Name = world.Name,
                     AuthorName = world.AuthorName,
-                    Capacity = world.Capacity,
-                    Visits = world.Visits
+                    Capacity = world.Capacity
                 };
             }
         }
