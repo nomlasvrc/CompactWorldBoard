@@ -151,7 +151,7 @@ namespace Nomlas.CompactWorldBoard.Editor
                 }
                 using (new EditorGUI.DisabledScope(isFetchingWorlds))
                 {
-                    if (GUILayout.Button(isFetchingWorlds ? "取得中..." : "未取得を取得", GUILayout.Width(110)))
+                    if (GUILayout.Button(isFetchingWorlds ? "取得中..." : "ワールド情報を取得", GUILayout.Width(110)))
                     {
                         GetWorldsAsync().Forget();
                     }
