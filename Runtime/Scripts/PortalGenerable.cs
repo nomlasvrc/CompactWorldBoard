@@ -14,14 +14,14 @@ namespace Nomlas.CompactWorldBoard
         [SerializeField] private Transform portalParent;
         [SerializeField] private protected GameObject content;
         [SerializeField] private protected Transform contentParent;
-        [SerializeField] private int createDelaySeconds = 0;
-        [SerializeField] private int createDelayRandomSeconds = 10;
+        [SerializeField] private int createDelaySecondsMin = 5;
+        [SerializeField] private int createDelaySecondsMax = 20;
 
         private void Start()
         {
-            var random = Random.Range(0, createDelayRandomSeconds);
-            Debug.Log($"[CompactWorldBoard] ポータルを {createDelaySeconds} + {random} 秒後に作成します。");
-            SendCustomEventDelayedSeconds(nameof(Create), createDelaySeconds + random);
+            var random = Random.Range(createDelaySecondsMin, createDelaySecondsMax);
+            Debug.Log($"[CompactWorldBoard] ポータルを {random} 秒後に作成します。");
+            SendCustomEventDelayedSeconds(nameof(Create), random);
         }
 
         public abstract void Create();
