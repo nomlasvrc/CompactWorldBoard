@@ -34,6 +34,14 @@ jobs:
       # Checkout Local Repository
       - name: Checkout Local Repository
         uses: actions/checkout@v6
+        with:
+          ref: main
+
+      # Checkout Local Repository website branch
+      - name: Checkout Local Repository
+        uses: actions/checkout@v6
+        with:
+          ref: website
 
       # Checkout Automation Repository without removing prior checkouts
       - name: Checkout Automation Repository
