@@ -21,6 +21,8 @@ namespace Nomlas.CompactWorldBoard.Editor
         {
             serializedObject.Update();
 
+            DrawUpdateCheckStatus();
+            EditorGUILayout.Space();
             DrawInspectorGUI();
             EditorGUILayout.Space(20);
             EditorGUI.indentLevel++;
@@ -42,6 +44,38 @@ namespace Nomlas.CompactWorldBoard.Editor
         private SerializedProperty canEnterProp;
         private SerializedProperty createDelaySecondsMinProp;
         private SerializedProperty createDelaySecondsMaxProp;
+
+        private void DrawUpdateCheckStatus()
+        {
+            if (!VPMUpdateCheckCache.IsCompleted)
+            {
+                EditorGUILayout.HelpBox("更新チェック中です。", MessageType.Info);
+                return;
+            }
+
+            if (VPMUpdateCheckCache.LastError != null)
+            {
+                EditorGUILayout.HelpBox($"更新チェックに失敗しました。\n{VPMUpdateCheckCache.LastError.Message}", MessageType.Error);
+                return;
+            }
+
+            var result = VPMUpdateCheckCache.Result;
+            if (result == null)
+            {
+                EditorGUILayout.HelpBox("更新チェック結果がありません。", MessageType.Error);
+                return;
+            }
+
+            if (result.HasUpdate)
+            {
+                EditorGUILayout.HelpBox($"CompactWorldBoardのアップデートが利用可能です。\n{result.CurrentVersion} -> {result.LatestVersion}", MessageType.Warning);
+            }
+            else
+            {
+                EditorGUILayout.HelpBox($"CompactWorldBoardは最新です。\n{result.CurrentVersion}", MessageType.None);
+            }
+        }
+
         private void GetCommonProperties()
         {
             userOrGroupProp = serializedObject.FindProperty("userOrGroup");

@@ -1,12 +1,8 @@
 
 using System;
-using System.Linq;
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Networking;
-using Cysharp.Threading.Tasks;
-using Newtonsoft.Json;
 using VRC.SDKBase.Editor.BuildPipeline;
+using UnityEditor;
 
 namespace Nomlas.CompactWorldBoard.Editor
 {
@@ -16,78 +12,39 @@ namespace Nomlas.CompactWorldBoard.Editor
 
         public bool OnBuildRequested(VRCSDKRequestedBuildType requestedBuildType)
         {
-            var result = VPMVersionChecker.CheckForUpdateAsync(Application.version).GetAwaiter().GetResult();
+            try
+            {
+                if (!VPMUpdateCheckCache.IsCompleted)
+                {
+                    throw new Exception("Update check has not completed yet. Please wait a moment and retry build.");
+                }
 
-            if (result.HasUpdate)
-            {
-                UnityEditor.EditorUtility.DisplayDialog("アップデートが利用可能です", $"CompactWorldBoardのアップデートが利用可能です\n{result.CurrentVersion} -> {result.LatestVersion}\n\n「OK」をクリックしてビルドを終了します", "OK");
-                return false; // Cancel the build
-            }
-            else
-            {
+                if (VPMUpdateCheckCache.LastError != null)
+                {
+                    throw new Exception($"Startup update check failed: {VPMUpdateCheckCache.LastError.Message}", VPMUpdateCheckCache.LastError);
+                }
+
+                var result = VPMUpdateCheckCache.Result;
+                if (result == null)
+                {
+                    throw new Exception("Update check cache is empty.");
+                }
+
+                if (result.HasUpdate)
+                {
+                    EditorUtility.DisplayDialog("アップデートが利用可能です", $"CompactWorldBoardのアップデートが利用可能です\n{result.CurrentVersion} -> {result.LatestVersion}\n\n「OK」をクリックしてビルドを終了します", "OK");
+                    return false; // Cancel the build
+                }
+
                 Debug.Log("Already up to date.");
                 return true; // Proceed with the build
             }
-        }
-    }
-
-    public static class VPMVersionChecker
-    {
-        private const string VPMJSONURL = "https://nomlasvrc.github.io/CompactWorldBoard/index.json";
-        private const string PackageID = "com.nomlas.compactworldboard";
-        public static async UniTask<UpdateCheckResult> CheckForUpdateAsync(string currentVersion)
-        {
-            using var req = UnityWebRequest.Get(VPMJSONURL);
-            await req.SendWebRequest();
-
-            if (req.result != UnityWebRequest.Result.Success)
+            catch (Exception ex)
             {
-                throw new Exception($"Failed to download VPM index: {req.error}");
+                Debug.LogError($"Update check failed. Build is canceled. Reason: {ex}");
+                EditorUtility.DisplayDialog("更新チェックエラー", $"更新チェック中にエラーが発生したためビルドを中止しました。\n\n{ex.Message}", "OK");
+                return false; // Fail the build on any error
             }
-
-            var repository = JsonConvert.DeserializeObject<VPMRepository>(req.downloadHandler.text);
-
-            if (!repository.Packages.TryGetValue(PackageID, out var package))
-            {
-                throw new Exception($"Package '{PackageID}' not found.");
-            }
-
-            var latest = package.Versions.Values
-                .Where(v => !v.Version.Contains('-')) // Stable only
-                .OrderByDescending(v => Version.Parse(v.Version))
-                .First();
-
-            return new UpdateCheckResult
-            {
-                CurrentVersion = currentVersion,
-                LatestVersion = latest.Version,
-                HasUpdate = Version.Parse(latest.Version) > Version.Parse(currentVersion)
-            };
         }
-    }
-
-    public class UpdateCheckResult
-    {
-        public bool HasUpdate;
-        public string CurrentVersion;
-        public string LatestVersion;
-    }
-
-    public class VPMRepository
-    {
-        [JsonProperty("packages")]
-        public Dictionary<string, VpmPackage> Packages;
-    }
-
-    public class VpmPackage
-    {
-        [JsonProperty("versions")]
-        public Dictionary<string, VpmVersion> Versions;
-    }
-
-    public class VpmVersion
-    {
-        [JsonProperty("version")]
-        public string Version;
     }
 }
