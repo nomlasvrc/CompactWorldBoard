@@ -72,7 +72,7 @@ namespace Nomlas.CompactWorldBoard.Editor
             }
             else
             {
-                EditorGUILayout.HelpBox($"CompactWorldBoardは最新です。\n{result.CurrentVersion}", MessageType.None);
+                EditorGUILayout.HelpBox($"CompactWorldBoardは最新({result.CurrentVersion})です。", MessageType.None);
             }
         }
 
