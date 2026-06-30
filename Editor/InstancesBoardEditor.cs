@@ -6,8 +6,8 @@ namespace Nomlas.CompactWorldBoard.Editor
     [CustomEditor(typeof(InstancesBoard))]
     public class InstancesBoardEditor : BoardEditor
     {
-        SerializedProperty worldIdProp;
-        SerializedProperty instanceIdsProp;
+        private SerializedProperty worldIdProp;
+        private SerializedProperty instanceIdsProp;
         private protected override void GetProperties()
         {
             worldIdProp = serializedObject.FindProperty("worldId");

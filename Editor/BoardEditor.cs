@@ -9,7 +9,7 @@ namespace Nomlas.CompactWorldBoard.Editor
         private protected abstract void GetProperties();
         private protected abstract void DrawInspectorGUI();
 
-        bool fold;
+        private bool fold;
 
         private void OnEnable()
         {
@@ -32,16 +32,16 @@ namespace Nomlas.CompactWorldBoard.Editor
         }
 
 
-        
-        SerializedProperty userOrGroupProp;
-        SerializedProperty instanceTypeProp;
-        SerializedProperty userIdProp;
-        SerializedProperty groupTypeProp;
-        SerializedProperty groupIdProp;
-        SerializedProperty regionProp;
-        SerializedProperty canEnterProp;
-        SerializedProperty createDelaySecondsMinProp;
-        SerializedProperty createDelaySecondsMaxProp;
+
+        private SerializedProperty userOrGroupProp;
+        private SerializedProperty instanceTypeProp;
+        private SerializedProperty userIdProp;
+        private SerializedProperty groupTypeProp;
+        private SerializedProperty groupIdProp;
+        private SerializedProperty regionProp;
+        private SerializedProperty canEnterProp;
+        private SerializedProperty createDelaySecondsMinProp;
+        private SerializedProperty createDelaySecondsMaxProp;
         private void GetCommonProperties()
         {
             userOrGroupProp = serializedObject.FindProperty("userOrGroup");

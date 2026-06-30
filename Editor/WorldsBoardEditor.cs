@@ -6,8 +6,8 @@ namespace Nomlas.CompactWorldBoard.Editor
     [CustomEditor(typeof(WorldsBoard))]
     public class WorldsBoardEditor : BoardEditor
     {
-        WorldsBoard worldsBoard;
-        SerializedProperty instanceIdProp;
+        private WorldsBoard worldsBoard;
+        private SerializedProperty instanceIdProp;
         private protected override void GetProperties()
         {
             worldsBoard = (WorldsBoard)target;
