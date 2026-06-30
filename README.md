@@ -1,4 +1,5 @@
 # Compact World Board
+[**VPM追加はこちら**](https://nomlasvrc.github.io/nomlas-package-listing/)  
 
 VRChat ワールド向けの、コンパクトなワールド/インスタンス一覧ボードです。  
 `VRCPortalMarker` を生成し、ポータルのサムネイルや表示テキストを取得して、ボタン状の一覧として表示します。
