@@ -45,7 +45,7 @@ namespace Nomlas.CompactWorldBoard.Editor
             return row;
         }
 
-        internal static VisualElement Card(VisualElement parent, string title, string description = null)
+        internal static VisualElement Section(VisualElement parent, string title, string description = null)
         {
             var section = new VisualElement();
             section.AddToClassList("cwb-section");
@@ -67,21 +67,9 @@ namespace Nomlas.CompactWorldBoard.Editor
             var button = new Button(action) { tooltip = text };
             button.AddToClassList("cwb-button");
             if (className != null) button.AddToClassList(className);
-            if (icon == null)
-            {
-                switch (text)
-                {
-                    case "↑": icon = "up"; break;
-                    case "↓": icon = "down"; break;
-                    case "削除": icon = "delete"; break;
-                    case "追加": icon = "add"; break;
-                    case "追加済み": icon = "check"; break;
-                    default: icon = text.Contains("取得") ? "refresh" : "open"; break;
-                }
-            }
-            button.Add(Icon(icon));
+            if (icon != null) button.Add(Icon(icon));
             var label = new Label(text) { name = "cwb-button-label", pickingMode = PickingMode.Ignore };
-            if (text == "↑" || text == "↓" || text.Length == 0)
+            if (text.Length == 0)
             {
                 label.style.display = DisplayStyle.None;
                 button.AddToClassList("cwb-icon-button");
@@ -161,7 +149,7 @@ namespace Nomlas.CompactWorldBoard.Editor
                     label.text += $" · v{result.LatestVersion} 利用可能";
                     badge.tooltip = "パッケージ一覧を開く";
                 }
-                else badge.tooltip = "最新バージョンです";
+                else badge.tooltip = result == null ? "バージョン情報を確認できませんでした" : "最新バージョンです";
             }
             Update();
             badge.RegisterCallback<ClickEvent>(_ =>

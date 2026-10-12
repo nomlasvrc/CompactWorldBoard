@@ -29,6 +29,17 @@ namespace Nomlas.CompactWorldBoard.Editor
         {
             minSize = new Vector2(520, 440);
             titleContent = new GUIContent("Instances Board");
+            EditorApplication.hierarchyChanged += OnHierarchyChanged;
+        }
+
+        private void OnDisable()
+        {
+            EditorApplication.hierarchyChanged -= OnHierarchyChanged;
+        }
+
+        private void OnHierarchyChanged()
+        {
+            if (board == null) Rebuild();
         }
 
         private void OnSelectionChange()
@@ -82,11 +93,11 @@ namespace Nomlas.CompactWorldBoard.Editor
                 content.Add(BoardUI.Text("シーンのInstancesBoardを選択するか、上の欄に指定してください。", "cwb-empty"));
                 return;
             }
-            var world = BoardUI.Card(content, "ワールド", "このワールドに、下のインスタンスを作成します。");
+            var world = BoardUI.Section(content, "ワールド", "このワールドに、下のインスタンスを作成します。");
             var serialized = new SerializedObject(board);
             BoardSettingsUI.AddProperty(world, serialized, "worldId", "ワールドID");
             world.Bind(serialized);
-            content.Add(BoardSettingsUI.Build(board));
+            content.Add(BoardSettingsUI.Build(board, serialized));
         }
     }
 }

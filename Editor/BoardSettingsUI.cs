@@ -14,7 +14,7 @@ namespace Nomlas.CompactWorldBoard.Editor
             return $"{access} · {board.region.ToString().ToUpperInvariant()}";
         }
 
-        internal static VisualElement Build(Board board)
+        internal static VisualElement Build(Board board, SerializedObject serialized = null)
         {
             var root = new VisualElement { name = "instance-settings" };
             if (board == null)
@@ -22,13 +22,13 @@ namespace Nomlas.CompactWorldBoard.Editor
                 root.Add(BoardUI.Text("編集するボードを指定してください。", "cwb-empty"));
                 return root;
             }
-            var serialized = new SerializedObject(board);
-            var identity = BoardUI.Card(root, "インスタンス", board is WorldsBoard
+            serialized = serialized ?? new SerializedObject(board);
+            var identity = BoardUI.Section(root, "インスタンス", board is WorldsBoard
                 ? "すべてのワールドに共通のインスタンスIDを使用します。空欄の場合は自動生成されます。"
                 : "同じワールドに作成するインスタンスを、表示順に並べます。");
             if (board is WorldsBoard) AddProperty(identity, serialized, "instanceId", "インスタンスID");
             else BuildInstanceList(identity, serialized);
-            var access = BoardUI.Card(root, "アクセスとリージョン");
+            var access = BoardUI.Section(root, "アクセスとリージョン");
             AddProperty(access, serialized, "userOrGroup", "オーナー");
             var user = new VisualElement();
             AddProperty(user, serialized, "instanceType", "アクセス範囲");
@@ -56,7 +56,9 @@ namespace Nomlas.CompactWorldBoard.Editor
 
         internal static PropertyField AddProperty(VisualElement parent, SerializedObject serialized, string name, string label)
         {
-            var field = new PropertyField(serialized.FindProperty(name), label);
+            var property = serialized.FindProperty(name)
+                ?? throw new ArgumentException($"{serialized.targetObject.GetType().Name} にプロパティ '{name}' がありません。", nameof(name));
+            var field = new PropertyField(property, label);
             parent.Add(field);
             return field;
         }
@@ -65,6 +67,7 @@ namespace Nomlas.CompactWorldBoard.Editor
         {
             var array = serialized.FindProperty("instanceIds");
             var list = new VisualElement { name = "instance-id-list" };
+            var displayedCount = -1;
             parent.Add(list);
             void Modify(Action<SerializedProperty> action)
             {
@@ -75,8 +78,12 @@ namespace Nomlas.CompactWorldBoard.Editor
             }
             void Rebuild()
             {
-                list.Clear();
                 array = serialized.FindProperty("instanceIds");
+                // Existing bindings handle value edits and reordering without losing focus.
+                if (displayedCount == array.arraySize) return;
+                displayedCount = array.arraySize;
+                list.Unbind();
+                list.Clear();
                 for (var i = 0; i < array.arraySize; i++)
                 {
                     var index = i;
@@ -87,11 +94,11 @@ namespace Nomlas.CompactWorldBoard.Editor
                     field.AddToClassList("cwb-grow");
                     row.Add(field);
                     field.BindProperty(array.GetArrayElementAtIndex(i));
-                    var up = BoardUI.Button("↑", () => Modify(p => p.MoveArrayElement(index, index - 1)));
+                    var up = BoardUI.Button("", () => Modify(p => p.MoveArrayElement(index, index - 1)), icon: "up");
                     up.tooltip = "上へ移動";
                     up.SetEnabled(i > 0);
                     row.Add(up);
-                    var down = BoardUI.Button("↓", () => Modify(p => p.MoveArrayElement(index, index + 1)));
+                    var down = BoardUI.Button("", () => Modify(p => p.MoveArrayElement(index, index + 1)), icon: "down");
                     down.tooltip = "下へ移動";
                     down.SetEnabled(i < array.arraySize - 1);
                     row.Add(down);
@@ -109,7 +116,7 @@ namespace Nomlas.CompactWorldBoard.Editor
                 p.InsertArrayElementAtIndex(index);
                 p.GetArrayElementAtIndex(index).stringValue = "";
             }), icon: "add"));
-            list.TrackPropertyValue(array, _ => Rebuild());
+            parent.TrackPropertyValue(array, _ => Rebuild());
         }
     }
 }

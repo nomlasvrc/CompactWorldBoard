@@ -22,7 +22,7 @@ namespace Nomlas.CompactWorldBoard.Editor
             root.Add(header);
             BuildBoardSettings(root);
 
-            var portal = BoardUI.Card(root, "ポータル");
+            var portal = BoardUI.Section(root, "ポータル");
             AddProperty(portal, "canEnter", "入場を許可（通常オフ）");
             AddProperty(portal, "createDelaySecondsMin", "最小遅延（秒）");
             AddProperty(portal, "createDelaySecondsMax", "最大遅延（秒）");
@@ -38,7 +38,7 @@ namespace Nomlas.CompactWorldBoard.Editor
             root.TrackPropertyValue(serializedObject.FindProperty("createDelaySecondsMin"), _ => ValidateDelay());
             root.TrackPropertyValue(serializedObject.FindProperty("createDelaySecondsMax"), _ => ValidateDelay());
 
-            var references = BoardUI.Card(root, "参照");
+            var references = BoardUI.Section(root, "参照");
             AddProperty(references, "portalMarkerPrefab", "ポータルPrefab");
             AddProperty(references, "portalParent", "ポータルの親");
             AddProperty(references, "content", "一覧テンプレート");
@@ -48,8 +48,7 @@ namespace Nomlas.CompactWorldBoard.Editor
 
         private protected void AddProperty(VisualElement parent, string name, string label)
         {
-            var property = serializedObject.FindProperty(name);
-            if (property != null) parent.Add(new PropertyField(property, label));
+            BoardSettingsUI.AddProperty(parent, serializedObject, name, label);
         }
 
         private protected void AddSummary(VisualElement parent, System.Func<string> describe)

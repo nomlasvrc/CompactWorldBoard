@@ -9,7 +9,7 @@ namespace Nomlas.CompactWorldBoard.Editor
         private protected override void BuildBoardSettings(VisualElement parent)
         {
             var board = (WorldsBoard)target;
-            var section = BoardUI.Card(parent, "ワールドボード");
+            var section = BoardUI.Section(parent, "ワールドボード");
             AddSummary(section, () => $"{board.worldIds?.Length ?? 0} ワールド · {BoardSettingsUI.Describe(board)}");
             section.Add(BoardUI.Button("ボードを編集", () => WorldsBoardWindow.Open(board), icon: "open"));
         }

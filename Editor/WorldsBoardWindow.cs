@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
 using Cysharp.Threading.Tasks;
 using Nomlas.CompactWorldBoard.Editor.Api;
 using UnityEditor;
@@ -45,6 +46,7 @@ namespace Nomlas.CompactWorldBoard.Editor
         private ObjectField boardField;
         private bool isWindowActive;
         private WorldThumbnailCache thumbnailCache;
+        private CancellationTokenSource requests;
         private const string WindowTitle = "Worlds Board";
         private static readonly Regex WorldIdPattern = new Regex(@"^wrld_[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$", RegexOptions.IgnoreCase);
 
@@ -66,6 +68,8 @@ namespace Nomlas.CompactWorldBoard.Editor
         private void OnEnable()
         {
             isWindowActive = true;
+            requests = new CancellationTokenSource();
+            isFetchingWorlds = isFetchingFavoriteWorldGroups = isFetchingFavoritedWorlds = false;
             thumbnailCache = new WorldThumbnailCache();
             titleContent = new GUIContent(WindowTitle);
             minSize = new Vector2(800, 440);
@@ -77,6 +81,9 @@ namespace Nomlas.CompactWorldBoard.Editor
         private void OnDisable()
         {
             isWindowActive = false;
+            requests?.Cancel();
+            requests?.Dispose();
+            requests = null;
             thumbnailCache?.Dispose();
             thumbnailCache = null;
             Undo.undoRedoPerformed -= RefreshUI;
@@ -163,7 +170,7 @@ namespace Nomlas.CompactWorldBoard.Editor
             });
             addRow.Add(BoardUI.Icon("add"));
             addRow.Add(addField);
-            addButton = BoardUI.Button("追加", SubmitWorld);
+            addButton = BoardUI.Button("追加", SubmitWorld, icon: "add");
             addRow.Add(addButton);
             worldsPage.Add(addRow);
             worldsPage.Add(BoardUI.Text("ワールドID / VRChat URL · Enterで追加", "cwb-input-hint"));
@@ -177,7 +184,7 @@ namespace Nomlas.CompactWorldBoard.Editor
             search.AddToClassList("cwb-search");
             search.RegisterValueChangedCallback(e => { filterText = e.newValue; RefreshWorldList(); });
             toolbar.Add(search);
-            fetchButton = BoardUI.Button("情報を取得", () => GetWorldsAsync().Forget());
+            fetchButton = BoardUI.Button("情報を取得", () => GetWorldsAsync().Forget(), icon: "refresh");
             toolbar.Add(fetchButton);
             worldsPage.Add(toolbar);
             worldList = new ScrollView(ScrollViewMode.Vertical) { viewDataKey = "worlds-scroll" };
@@ -213,7 +220,7 @@ namespace Nomlas.CompactWorldBoard.Editor
             favoritesPage.Add(favoriteToolbar);
             var favoriteFetchRow = BoardUI.Row();
             favoriteFetchRow.AddToClassList("cwb-toolbar");
-            favoritesButton = BoardUI.Button("ワールドを取得", () => FetchFavoritedWorldsAsync().Forget());
+            favoritesButton = BoardUI.Button("ワールドを取得", () => FetchFavoritedWorldsAsync().Forget(), icon: "refresh");
             favoritesButton.AddToClassList("cwb-favorite-fetch");
             favoritesButton.AddToClassList("cwb-outlined");
             favoritesButton.tooltip = "選択したグループのワールドを取得";
@@ -337,15 +344,15 @@ namespace Nomlas.CompactWorldBoard.Editor
                 row.Add(details);
                 var actions = new VisualElement();
                 actions.AddToClassList("cwb-actions");
-                var up = BoardUI.Button("↑", () => MoveWorld(index, index - 1));
+                var up = BoardUI.Button("", () => MoveWorld(index, index - 1), icon: "up");
                 up.tooltip = "上へ移動";
                 up.SetEnabled(index > 0);
                 actions.Add(up);
-                var down = BoardUI.Button("↓", () => MoveWorld(index, index + 1));
+                var down = BoardUI.Button("", () => MoveWorld(index, index + 1), icon: "down");
                 down.tooltip = "下へ移動";
                 down.SetEnabled(index < ids.Length - 1);
                 actions.Add(down);
-                var fetch = BoardUI.Button("", () => GetWorldAsync(id).Forget(), "cwb-icon-button", "refresh");
+                var fetch = BoardUI.Button("", () => GetWorldsAsync(id).Forget(), "cwb-icon-button", "refresh");
                 fetch.tooltip = "ワールド情報を取得";
                 fetch.SetEnabled(!isFetchingWorlds && NeedsWorldInfo(id) && WorldIdPattern.IsMatch(id ?? ""));
                 actions.Add(fetch);
@@ -383,7 +390,7 @@ namespace Nomlas.CompactWorldBoard.Editor
                 details.tooltip = favorite.ID;
                 row.Add(details);
                 var added = WorldIds.Contains(favorite.ID);
-                var button = BoardUI.Button(added ? "追加済み" : "追加", () => AddWorld(favorite.ID));
+                var button = BoardUI.Button(added ? "追加済み" : "追加", () => AddWorld(favorite.ID), icon: added ? "check" : "add");
                 button.SetEnabled(!added);
                 row.Add(button);
                 favoriteList.Add(row);
@@ -466,16 +473,17 @@ namespace Nomlas.CompactWorldBoard.Editor
             status.messageType = type;
             status.style.display = DisplayStyle.Flex;
         }
-        private async UniTask GetWorldsAsync()
+        private async UniTask GetWorldsAsync(string worldId = null)
         {
             if (isFetchingWorlds || !isWindowActive) return;
+            var token = requests.Token;
             isFetchingWorlds = true;
             RefreshUI();
             ShowStatus("ワールド情報を取得しています…", BoardMessageKind.Info);
             var progressId = UnityEditor.Progress.Start("ワールド情報を取得中...");
             try
             {
-                var worldIds = WorldIds
+                var worldIds = (worldId == null ? WorldIds : new[] { worldId })
                     .Where(id => WorldIdPattern.IsMatch(id ?? "") && NeedsWorldInfo(id))
                     .Distinct()
                     .ToArray();
@@ -483,10 +491,11 @@ namespace Nomlas.CompactWorldBoard.Editor
                 var failures = 0;
                 for (var i = 0; i < worldIds.Length; i++)
                 {
-                    if (!isWindowActive) break;
-                    try { await FetchAndCacheWorld(worldIds[i]); }
-                    catch (Exception ex)
+                    token.ThrowIfCancellationRequested();
+                    try { await FetchAndCacheWorld(worldIds[i], token); }
+                    catch (Exception ex) when (!(ex is OperationCanceledException))
                     {
+                        token.ThrowIfCancellationRequested();
                         failures++;
                         Debug.LogError($"{worldIds[i]} の取得に失敗しました: {ex.Message}");
                     }
@@ -496,80 +505,72 @@ namespace Nomlas.CompactWorldBoard.Editor
                 ShowStatus(failures == 0 ? "ワールド情報を取得しました。" : $"{failures} 件の取得に失敗しました。SDKのログイン状態を確認し、再度取得してください。詳細はConsoleで確認できます。",
                     failures == 0 ? BoardMessageKind.Info : BoardMessageKind.Error);
             }
+            catch (OperationCanceledException) when (token.IsCancellationRequested) { }
             catch (Exception ex)
             {
+                if (token.IsCancellationRequested) return;
                 ShowStatus($"ワールド情報の取得に失敗しました: {ex.Message}", BoardMessageKind.Error); Debug.LogException(ex);
             }
             finally
             {
                 UnityEditor.Progress.Remove(progressId);
-                isFetchingWorlds = false;
-                RefreshUI();
-            }
-        }
-
-        private async UniTask GetWorldAsync(string worldId)
-        {
-            if (isFetchingWorlds || !isWindowActive) return;
-            isFetchingWorlds = true;
-            RefreshUI();
-            try
-            {
-                await FetchAndCacheWorld(worldId);
-                ShowStatus("ワールド情報を取得しました。", BoardMessageKind.Info);
-            }
-            catch (Exception ex)
-            {
-                ShowStatus($"ワールド情報の取得に失敗しました: {ex.Message}", BoardMessageKind.Error); Debug.LogException(ex);
-            }
-            finally
-            {
-                isFetchingWorlds = false;
-                RefreshUI();
+                if (!token.IsCancellationRequested)
+                {
+                    isFetchingWorlds = false;
+                    RefreshUI();
+                }
             }
         }
 
         private async UniTask FetchFavoriteWorldGroupNamesAsync()
         {
             if (isFetchingFavoriteWorldGroups || isFetchingFavoritedWorlds || !isWindowActive) return;
+            var token = requests.Token;
             isFetchingFavoriteWorldGroups = true;
             UpdateButtons();
             try
             {
-                var favoriteWorldGroups = await WorldsApi.GetFavoriteWorldsList(forceRefresh: true);
-                favoriteWorldGroupNames = (favoriteWorldGroups.Groups ?? new List<FavoriteGroup>()).ConvertAll(g => string.IsNullOrWhiteSpace(g.DisplayName) ? g.Name : g.DisplayName).ToArray();
-                favoriteWorldGroupApiNames = (favoriteWorldGroups.Groups ?? new List<FavoriteGroup>()).ConvertAll(g => g.Name).ToArray();
+                var favoriteWorldGroups = await WorldsApi.GetFavoriteWorldsList(forceRefresh: true, cancellationToken: token);
+                token.ThrowIfCancellationRequested();
+                var groups = favoriteWorldGroups.Groups ?? new List<FavoriteGroup>();
+                favoriteWorldGroupNames = groups.ConvertAll(g => string.IsNullOrWhiteSpace(g.DisplayName) ? g.Name : g.DisplayName).ToArray();
+                favoriteWorldGroupApiNames = groups.ConvertAll(g => g.Name).ToArray();
                 selectedFavoriteWorldGroupIndex = 0;
                 favorites.Clear();
                 ShowStatus(favoriteWorldGroupNames.Length == 0 ? "お気に入りグループがありません。" : "グループを選んで「ワールドを取得」を押してください。", BoardMessageKind.Info);
             }
+            catch (OperationCanceledException) when (token.IsCancellationRequested) { }
             catch (Exception ex)
             {
+                if (token.IsCancellationRequested) return;
                 ShowStatus($"お気に入りグループを取得できませんでした: {ex.Message}", BoardMessageKind.Error); Debug.LogException(ex);
-                favoriteWorldGroupNames = null;
-                favoriteWorldGroupApiNames = null;
             }
             finally
             {
-                isFetchingFavoriteWorldGroups = false;
-                RefreshUI();
+                if (!token.IsCancellationRequested)
+                {
+                    isFetchingFavoriteWorldGroups = false;
+                    RefreshUI();
+                }
             }
         }
 
         private async UniTask FetchFavoritedWorldsAsync()
         {
             if (isFetchingFavoriteWorldGroups || isFetchingFavoritedWorlds || !isWindowActive) return;
+            var token = requests.Token;
             isFetchingFavoritedWorlds = true;
             UpdateButtons();
             try
             {
                 if (favoriteWorldGroupApiNames == null || selectedFavoriteWorldGroupIndex < 0 || selectedFavoriteWorldGroupIndex >= favoriteWorldGroupApiNames.Length)
                 {
-                    Debug.LogError("無効なお気に入りワールドグループが選択されています。");
+                    ShowStatus("お気に入りグループを選択してください。", BoardMessageKind.Warning);
                     return;
                 }
 
-                var favoriteWorlds = await WorldsApi.GetFavoriteWorlds(favoriteWorldGroupApiNames[selectedFavoriteWorldGroupIndex], forceRefresh: true);
+                var favoriteWorlds = await WorldsApi.GetFavoriteWorlds(favoriteWorldGroupApiNames[selectedFavoriteWorldGroupIndex], forceRefresh: true, cancellationToken: token);
+                token.ThrowIfCancellationRequested();
                 favorites = (favoriteWorlds.Favorites ?? new List<FavoritedWorld>())
                     .Where(f => !string.IsNullOrEmpty(f.world.ID))
                     .Select(f => WorldCache.FromWorld(f.world))
@@ -580,22 +581,27 @@ namespace Nomlas.CompactWorldBoard.Editor
                     CacheWorld(favorite);
                 }
             }
+            catch (OperationCanceledException) when (token.IsCancellationRequested) { }
             catch (Exception ex)
             {
+                if (token.IsCancellationRequested) return;
                 ShowStatus($"お気に入りを取得できませんでした: {ex.Message}", BoardMessageKind.Error); Debug.LogException(ex);
-                favorites.Clear();
             }
             finally
             {
-                isFetchingFavoritedWorlds = false;
-                RefreshUI();
+                if (!token.IsCancellationRequested)
+                {
+                    isFetchingFavoritedWorlds = false;
+                    RefreshUI();
+                }
             }
         }
 
-        private async UniTask FetchAndCacheWorld(string worldId)
+        private async UniTask FetchAndCacheWorld(string worldId, CancellationToken token)
         {
-            var world = await VRCApi.GetWorld(worldId);
-            if (isWindowActive) CacheWorld(WorldCache.FromWorld(world));
+            var world = await VRCApi.GetWorld(worldId, cancellationToken: token);
+            token.ThrowIfCancellationRequested();
+            CacheWorld(WorldCache.FromWorld(world));
         }
 
         private void AddWorld(string worldId)
@@ -720,7 +726,7 @@ namespace Nomlas.CompactWorldBoard.Editor
             Undo.RecordObject(worldsBoard, operation);
         }
 
-        private string[] WorldIds => worldsBoard?.worldIds ?? new string[0];
+        private string[] WorldIds => worldsBoard != null ? worldsBoard.worldIds ?? Array.Empty<string>() : Array.Empty<string>();
 
         private static WorldsBoard GetSelectedBoard()
         {
