@@ -57,7 +57,7 @@ namespace Nomlas.CompactWorldBoard.Editor
         {
             var window = GetWindow<WorldsBoardWindow>(WindowTitle);
             if (board != null) window.SetBoard(board);
-            window.minSize = new Vector2(640, 440);
+            window.minSize = new Vector2(800, 440);
             window.Show();
             window.Focus();
         }
@@ -66,7 +66,7 @@ namespace Nomlas.CompactWorldBoard.Editor
         {
             isWindowActive = true;
             titleContent = new GUIContent(WindowTitle);
-            minSize = new Vector2(640, 440);
+            minSize = new Vector2(800, 440);
             SyncCacheWithBoard();
             Undo.undoRedoPerformed += RefreshUI;
             EditorApplication.hierarchyChanged += RefreshUI;
@@ -119,14 +119,23 @@ namespace Nomlas.CompactWorldBoard.Editor
             boardContent.Add(tabRow);
             var worldsPage = new VisualElement();
             worldsPage.AddToClassList("cwb-page");
+            worldsPage.AddToClassList("cwb-worlds-pane");
             settingsPage = new ScrollView(ScrollViewMode.Vertical);
             settingsPage.AddToClassList("cwb-page");
             var favoritesPage = new VisualElement();
             favoritesPage.AddToClassList("cwb-page");
-            pages = new[] { worldsPage, settingsPage, favoritesPage };
-            tabs = new Button[3];
-            var names = new[] { "ワールド", "インスタンス設定", "お気に入り" };
-            var icons = new[] { "world", "settings", "bookmark" };
+            favoritesPage.AddToClassList("cwb-favorites-pane");
+            var split = new TwoPaneSplitView(0, 300, TwoPaneSplitViewOrientation.Horizontal)
+            {
+                viewDataKey = "worlds-favorites-split"
+            };
+            split.AddToClassList("cwb-page");
+            split.Add(favoritesPage);
+            split.Add(worldsPage);
+            pages = new VisualElement[] { split, settingsPage };
+            tabs = new Button[2];
+            var names = new[] { "ワールド", "インスタンス設定" };
+            var icons = new[] { "world", "settings" };
             for (var i = 0; i < pages.Length; i++)
             {
                 var index = i;
@@ -171,10 +180,18 @@ namespace Nomlas.CompactWorldBoard.Editor
             worldList.AddToClassList("cwb-list");
             worldsPage.Add(worldList);
 
+            var favoriteHeader = BoardUI.Row();
+            favoriteHeader.AddToClassList("cwb-toolbar");
+            favoriteHeader.Add(BoardUI.Icon("bookmark"));
+            var favoriteTitle = BoardUI.Text("お気に入り", "cwb-section-title");
+            favoriteTitle.AddToClassList("cwb-grow");
+            favoriteHeader.Add(favoriteTitle);
+            groupsButton = BoardUI.Button("", () => FetchFavoriteWorldGroupNamesAsync().Forget(), "cwb-icon-button", "refresh");
+            groupsButton.tooltip = "お気に入りグループを取得・更新";
+            favoriteHeader.Add(groupsButton);
+            favoritesPage.Add(favoriteHeader);
             var favoriteToolbar = BoardUI.Row();
             favoriteToolbar.AddToClassList("cwb-toolbar");
-            groupsButton = BoardUI.Button("グループを取得", () => FetchFavoriteWorldGroupNamesAsync().Forget());
-            favoriteToolbar.Add(groupsButton);
             groupPicker = new PopupField<int>(new List<int>(), -1, FavoriteGroupLabel, FavoriteGroupLabel);
             groupPicker.AddToClassList("cwb-grow");
             groupPicker.RegisterValueChangedCallback(e =>
@@ -185,7 +202,8 @@ namespace Nomlas.CompactWorldBoard.Editor
                 RefreshFavorites();
             });
             favoriteToolbar.Add(groupPicker);
-            favoritesButton = BoardUI.Button("ワールドを取得", () => FetchFavoritedWorldsAsync().Forget());
+            favoritesButton = BoardUI.Button("取得", () => FetchFavoritedWorldsAsync().Forget());
+            favoritesButton.tooltip = "選択したグループのワールドを取得";
             favoriteToolbar.Add(favoritesButton);
             favoritesPage.Add(favoriteToolbar);
             favoritesPage.Add(BoardUI.Text("VRChat SDKへのログインが必要です。", "cwb-input-hint"));
@@ -195,7 +213,7 @@ namespace Nomlas.CompactWorldBoard.Editor
             status = new BoardStatusLine();
             status.style.display = DisplayStyle.None;
             root.Add(status);
-            SelectTab(Mathf.Clamp(selectedTab, 0, 2));
+            SelectTab(selectedTab == 1 ? 1 : 0);
             RefreshUI();
         }
 
@@ -369,10 +387,10 @@ namespace Nomlas.CompactWorldBoard.Editor
             addButton.SetEnabled(!string.IsNullOrWhiteSpace(newWorldId));
             BoardUI.SetButtonText(fetchButton, isFetchingWorlds ? "取得中…" : "情報を取得");
             fetchButton.SetEnabled(!isFetchingWorlds && WorldIds.Any(id => WorldIdPattern.IsMatch(id ?? "") && FindWorld(id) == null));
-            BoardUI.SetButtonText(groupsButton, isFetchingFavoriteWorldGroups ? "取得中…" : "グループを取得");
+            groupsButton.tooltip = isFetchingFavoriteWorldGroups ? "グループ取得中…" : "お気に入りグループを取得・更新";
             groupsButton.SetEnabled(!isFetchingFavoriteWorldGroups && !isFetchingFavoritedWorlds);
             groupPicker.SetEnabled(!isFetchingFavoriteWorldGroups && !isFetchingFavoritedWorlds && groupPicker.choices.Count > 0);
-            BoardUI.SetButtonText(favoritesButton, isFetchingFavoritedWorlds ? "取得中…" : "ワールドを取得");
+            BoardUI.SetButtonText(favoritesButton, isFetchingFavoritedWorlds ? "取得中…" : "取得");
             favoritesButton.SetEnabled(!isFetchingFavoriteWorldGroups && !isFetchingFavoritedWorlds && groupPicker.choices.Count > 0);
         }
 
