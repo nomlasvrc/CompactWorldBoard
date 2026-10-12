@@ -1,39 +1,17 @@
 using UnityEditor;
-using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace Nomlas.CompactWorldBoard.Editor
 {
     [CustomEditor(typeof(WorldsBoard))]
     public class WorldsBoardEditor : BoardEditor
     {
-        private WorldsBoard worldsBoard;
-        private SerializedProperty instanceIdProp;
-        private protected override void GetProperties()
+        private protected override void BuildBoardSettings(VisualElement parent)
         {
-            worldsBoard = (WorldsBoard)target;
-            instanceIdProp = serializedObject.FindProperty("instanceId");
-        }
-
-        private protected override void DrawInspectorGUI()
-        {
-            EditorGUILayout.LabelField("生成するインスタンスの設定", EditorStyles.boldLabel);
-            EditorGUI.indentLevel++;
-
-            using (new EditorGUILayout.HorizontalScope())
-            {
-                EditorGUILayout.LabelField("ワールド", $"{worldsBoard.worldIds?.Length ?? 0} 件");
-                if (GUILayout.Button("ワールド一覧を編集", GUILayout.Width(160)))
-                {
-                    WorldsBoardWindow.Open(worldsBoard);
-                }
-            }
-
-            EditorGUILayout.Space();
-            EditorGUILayout.PropertyField(instanceIdProp, new GUIContent("インスタンスID"));
-            DrawCommonInspectorGUI();
-            EditorGUI.indentLevel--;
-            EditorGUILayout.Space();
-            DrawPortalInspectorGUI();
+            var board = (WorldsBoard)target;
+            var section = BoardUI.Card(parent, "ワールドボード");
+            AddSummary(section, () => $"{board.worldIds?.Length ?? 0} ワールド · {BoardSettingsUI.Describe(board)}");
+            section.Add(BoardUI.Button("ボードを編集", () => WorldsBoardWindow.Open(board), icon: "open"));
         }
     }
 }
