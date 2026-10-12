@@ -314,7 +314,7 @@ namespace Nomlas.CompactWorldBoard.Editor
                 var details = new VisualElement();
                 details.AddToClassList("cwb-grow");
                 details.Add(BoardUI.Text(cached?.Name ?? "ワールド情報 未取得", "cwb-world-name"));
-                details.Add(BoardUI.Text(!WorldIdPattern.IsMatch(id ?? "") ? "ワールドIDの形式を確認してください" : cached == null ? "「取得」で名前・作者・人数を読み込みます" : $"{cached.AuthorName}  ·  定員 {cached.Capacity} 人", "cwb-meta"));
+                details.Add(BoardUI.Text(!WorldIdPattern.IsMatch(id ?? "") ? "ワールドIDの形式を確認してください" : cached == null ? "-" : $"{cached.AuthorName}  ·  定員 {cached.Capacity} 人", "cwb-meta"));
                 var field = new TextField { value = id ?? "", isDelayed = true, tooltip = "ワールドIDを編集（Enterまたはフォーカス移動で確定）" };
                 field.RegisterValueChangedCallback(e =>
                 {

@@ -35,8 +35,10 @@
 .cwb-wrap { flex-wrap: wrap; }
 .cwb-grow { flex-grow: 1; min-width: 0; min-height: 0; }
 .cwb-page { flex-grow: 1; min-height: 0; background-color: var(--cwb-surface); }
-.cwb-favorites-pane { min-width: 240px; background-color: var(--cwb-background); overflow: hidden; }
-.cwb-worlds-pane { min-width: 440px; overflow: hidden; }
+.cwb-favorites-pane { min-width: 240px; background-color: var(--cwb-background); overflow: hidden; padding: 4px 8px; }
+.cwb-worlds-pane { min-width: 440px; overflow: hidden; padding: 4px 8px; }
+.cwb-worlds-pane .cwb-search { flex-shrink: 1; min-width: 100px; }
+.cwb-worlds-pane .cwb-toolbar .cwb-meta { flex-shrink: 1; }
 .cwb .unity-two-pane-split-view__dragline { background-color: var(--cwb-stroke); }
 .cwb .unity-two-pane-split-view__dragline-anchor:hover .unity-two-pane-split-view__dragline { background-color: var(--cwb-brand); }
 .cwb-icon { width: 16px; height: 16px; min-width: 16px; margin-right: 6px; flex-shrink: 0; }
