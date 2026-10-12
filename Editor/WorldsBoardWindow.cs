@@ -187,13 +187,16 @@ namespace Nomlas.CompactWorldBoard.Editor
             favoriteTitle.AddToClassList("cwb-grow");
             favoriteHeader.Add(favoriteTitle);
             groupsButton = BoardUI.Button("", () => FetchFavoriteWorldGroupNamesAsync().Forget(), "cwb-icon-button", "refresh");
+            groupsButton.AddToClassList("cwb-outlined");
             groupsButton.tooltip = "お気に入りグループを取得・更新";
-            favoriteHeader.Add(groupsButton);
             favoritesPage.Add(favoriteHeader);
+            var favoriteHint = BoardUI.Text("お気に入りから追加（VRChat SDKへのログインが必要です）", "cwb-input-hint");
+            favoriteHint.AddToClassList("cwb-favorite-hint");
+            favoritesPage.Add(favoriteHint);
             var favoriteToolbar = BoardUI.Row();
             favoriteToolbar.AddToClassList("cwb-toolbar");
             groupPicker = new PopupField<int>(new List<int>(), -1, FavoriteGroupLabel, FavoriteGroupLabel);
-            groupPicker.AddToClassList("cwb-grow");
+            groupPicker.AddToClassList("cwb-favorite-group-picker");
             groupPicker.RegisterValueChangedCallback(e =>
             {
                 if (selectedFavoriteWorldGroupIndex == e.newValue) return;
@@ -202,11 +205,16 @@ namespace Nomlas.CompactWorldBoard.Editor
                 RefreshFavorites();
             });
             favoriteToolbar.Add(groupPicker);
-            favoritesButton = BoardUI.Button("取得", () => FetchFavoritedWorldsAsync().Forget());
-            favoritesButton.tooltip = "選択したグループのワールドを取得";
-            favoriteToolbar.Add(favoritesButton);
+            favoriteToolbar.Add(groupsButton);
             favoritesPage.Add(favoriteToolbar);
-            favoritesPage.Add(BoardUI.Text("VRChat SDKへのログインが必要です。", "cwb-input-hint"));
+            var favoriteFetchRow = BoardUI.Row();
+            favoriteFetchRow.AddToClassList("cwb-toolbar");
+            favoritesButton = BoardUI.Button("ワールドを取得", () => FetchFavoritedWorldsAsync().Forget());
+            favoritesButton.AddToClassList("cwb-favorite-fetch");
+            favoritesButton.AddToClassList("cwb-outlined");
+            favoritesButton.tooltip = "選択したグループのワールドを取得";
+            favoriteFetchRow.Add(favoritesButton);
+            favoritesPage.Add(favoriteFetchRow);
             favoriteList = new ScrollView(ScrollViewMode.Vertical) { viewDataKey = "favorites-scroll" };
             favoriteList.AddToClassList("cwb-list");
             favoritesPage.Add(favoriteList);
@@ -390,7 +398,7 @@ namespace Nomlas.CompactWorldBoard.Editor
             groupsButton.tooltip = isFetchingFavoriteWorldGroups ? "グループ取得中…" : "お気に入りグループを取得・更新";
             groupsButton.SetEnabled(!isFetchingFavoriteWorldGroups && !isFetchingFavoritedWorlds);
             groupPicker.SetEnabled(!isFetchingFavoriteWorldGroups && !isFetchingFavoritedWorlds && groupPicker.choices.Count > 0);
-            BoardUI.SetButtonText(favoritesButton, isFetchingFavoritedWorlds ? "取得中…" : "取得");
+            BoardUI.SetButtonText(favoritesButton, isFetchingFavoritedWorlds ? "取得中…" : "ワールドを取得");
             favoritesButton.SetEnabled(!isFetchingFavoriteWorldGroups && !isFetchingFavoritedWorlds && groupPicker.choices.Count > 0);
         }
 
