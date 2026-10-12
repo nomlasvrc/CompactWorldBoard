@@ -11,7 +11,7 @@ namespace Nomlas.CompactWorldBoard.Editor
             var board = (WorldsBoard)target;
             var section = BoardUI.Section(parent, "ワールドボード");
             AddSummary(section, () => $"{board.worldIds?.Length ?? 0} ワールド · {BoardSettingsUI.Describe(board)}");
-            section.Add(BoardUI.Button("ボードを編集", () => WorldsBoardWindow.Open(board), icon: "open"));
+            section.Add(BoardUI.Button("ボードを編集", () => WorldsBoardWindow.Open(board), "cwb-outlined", "open"));
         }
     }
 }
