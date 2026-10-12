@@ -44,6 +44,7 @@ namespace Nomlas.CompactWorldBoard.Editor
         private Button[] tabs;
         private ObjectField boardField;
         private bool isWindowActive;
+        private WorldThumbnailCache thumbnailCache;
         private const string WindowTitle = "Worlds Board";
         private static readonly Regex WorldIdPattern = new Regex(@"^wrld_[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$", RegexOptions.IgnoreCase);
 
@@ -65,6 +66,7 @@ namespace Nomlas.CompactWorldBoard.Editor
         private void OnEnable()
         {
             isWindowActive = true;
+            thumbnailCache = new WorldThumbnailCache();
             titleContent = new GUIContent(WindowTitle);
             minSize = new Vector2(800, 440);
             SyncCacheWithBoard();
@@ -75,6 +77,8 @@ namespace Nomlas.CompactWorldBoard.Editor
         private void OnDisable()
         {
             isWindowActive = false;
+            thumbnailCache?.Dispose();
+            thumbnailCache = null;
             Undo.undoRedoPerformed -= RefreshUI;
             EditorApplication.hierarchyChanged -= RefreshUI;
         }
@@ -311,8 +315,10 @@ namespace Nomlas.CompactWorldBoard.Editor
                 row.RegisterCallback<PointerDownEvent>(_ => SelectRow());
                 row.RegisterCallback<FocusInEvent>(_ => SelectRow());
                 row.Add(BoardUI.Text((i + 1).ToString("00"), "cwb-index"));
+                row.Add(CreateThumbnail(cached));
                 var details = new VisualElement();
                 details.AddToClassList("cwb-grow");
+                details.AddToClassList("cwb-world-details");
                 details.Add(BoardUI.Text(cached?.Name ?? "ワールド情報 未取得", "cwb-world-name"));
                 details.Add(BoardUI.Text(!WorldIdPattern.IsMatch(id ?? "") ? "ワールドIDの形式を確認してください" : cached == null ? "-" : $"{cached.AuthorName}  ·  定員 {cached.Capacity} 人", "cwb-meta"));
                 var field = new TextField { value = id ?? "", isDelayed = true, tooltip = "ワールドIDを編集（Enterまたはフォーカス移動で確定）" };
@@ -341,7 +347,7 @@ namespace Nomlas.CompactWorldBoard.Editor
                 actions.Add(down);
                 var fetch = BoardUI.Button("", () => GetWorldAsync(id).Forget(), "cwb-icon-button", "refresh");
                 fetch.tooltip = "ワールド情報を取得";
-                fetch.SetEnabled(!isFetchingWorlds && cached == null && WorldIdPattern.IsMatch(id ?? ""));
+                fetch.SetEnabled(!isFetchingWorlds && NeedsWorldInfo(id) && WorldIdPattern.IsMatch(id ?? ""));
                 actions.Add(fetch);
                 var remove = BoardUI.Button("", () => RemoveWorldAt(index), "cwb-icon-button", "delete");
                 remove.AddToClassList("cwb-danger");
@@ -368,8 +374,10 @@ namespace Nomlas.CompactWorldBoard.Editor
             {
                 var row = BoardUI.Row();
                 row.AddToClassList("cwb-world-row");
+                row.Add(CreateThumbnail(favorite));
                 var details = new VisualElement();
                 details.AddToClassList("cwb-grow");
+                details.AddToClassList("cwb-world-details");
                 details.Add(BoardUI.Text(favorite.Name, "cwb-world-name"));
                 details.Add(BoardUI.Text(favorite.AuthorName, "cwb-meta"));
                 details.tooltip = favorite.ID;
@@ -383,6 +391,55 @@ namespace Nomlas.CompactWorldBoard.Editor
             if (favorites.Count == 0) favoriteList.Add(BoardUI.Text("グループを選んで、お気に入りを読み込んでください。", "cwb-empty"));
         }
 
+        private VisualElement CreateThumbnail(WorldCache world)
+        {
+            var image = new Image { scaleMode = ScaleMode.ScaleToFit, pickingMode = PickingMode.Ignore };
+            image.style.display = DisplayStyle.None;
+            var placeholder = BoardUI.Icon("world");
+            var retry = false;
+            var button = new Button { focusable = false };
+            button.AddToClassList("cwb-thumbnail");
+            button.Add(placeholder);
+            button.Add(image);
+            var url = world?.ThumbnailImageUrl;
+            if (string.IsNullOrWhiteSpace(url))
+            {
+                button.tooltip = "サムネイル未取得。「情報を取得」でワールド情報を読み込めます。";
+                return button;
+            }
+            var cache = thumbnailCache;
+            async UniTask LoadThumbnailAsync(bool forceRetry)
+            {
+                if (cache == null) return;
+                retry = false;
+                button.focusable = false;
+                button.tooltip = "サムネイルを読み込み中…";
+                try
+                {
+                    var texture = await cache.GetAsync(url, forceRetry);
+                    if (!isWindowActive || cache != thumbnailCache || texture == null) return;
+                    image.image = texture;
+                    image.style.display = DisplayStyle.Flex;
+                    placeholder.style.display = DisplayStyle.None;
+                    button.tooltip = world.Name;
+                }
+                catch (OperationCanceledException) { }
+                catch (Exception ex)
+                {
+                    if (!isWindowActive || cache != thumbnailCache) return;
+                    retry = true;
+                    button.focusable = true;
+                    button.tooltip = "サムネイルを取得できませんでした。クリックして再試行。\n" + ex.Message;
+                }
+            }
+            button.clicked += () =>
+            {
+                if (retry) LoadThumbnailAsync(true).Forget();
+            };
+            LoadThumbnailAsync(false).Forget();
+            return button;
+        }
+
         private string FavoriteGroupLabel(int index)
         {
             return favoriteWorldGroupNames != null && index >= 0 && index < favoriteWorldGroupNames.Length
@@ -394,7 +451,7 @@ namespace Nomlas.CompactWorldBoard.Editor
             if (addButton == null) return;
             addButton.SetEnabled(!string.IsNullOrWhiteSpace(newWorldId));
             BoardUI.SetButtonText(fetchButton, isFetchingWorlds ? "取得中…" : "情報を取得");
-            fetchButton.SetEnabled(!isFetchingWorlds && WorldIds.Any(id => WorldIdPattern.IsMatch(id ?? "") && FindWorld(id) == null));
+            fetchButton.SetEnabled(!isFetchingWorlds && WorldIds.Any(id => WorldIdPattern.IsMatch(id ?? "") && NeedsWorldInfo(id)));
             groupsButton.tooltip = isFetchingFavoriteWorldGroups ? "グループ取得中…" : "お気に入りグループを取得・更新";
             groupsButton.SetEnabled(!isFetchingFavoriteWorldGroups && !isFetchingFavoritedWorlds);
             groupPicker.SetEnabled(!isFetchingFavoriteWorldGroups && !isFetchingFavoritedWorlds && groupPicker.choices.Count > 0);
@@ -419,7 +476,7 @@ namespace Nomlas.CompactWorldBoard.Editor
             try
             {
                 var worldIds = WorldIds
-                    .Where(id => WorldIdPattern.IsMatch(id ?? "") && FindWorld(id) == null)
+                    .Where(id => WorldIdPattern.IsMatch(id ?? "") && NeedsWorldInfo(id))
                     .Distinct()
                     .ToArray();
 
@@ -632,6 +689,12 @@ namespace Nomlas.CompactWorldBoard.Editor
             return worlds.FirstOrDefault(w => w.ID == worldId);
         }
 
+        private bool NeedsWorldInfo(string worldId)
+        {
+            var cached = FindWorld(worldId);
+            return cached == null || string.IsNullOrEmpty(cached.ThumbnailImageUrl);
+        }
+
         private bool MatchesFilter(string worldId)
         {
             if (string.IsNullOrWhiteSpace(filterText)) return true;
@@ -671,6 +734,7 @@ namespace Nomlas.CompactWorldBoard.Editor
             public string Name;
             public string AuthorName;
             public int Capacity;
+            public string ThumbnailImageUrl;
 
             public static WorldCache FromWorld(VRCWorld world)
             {
@@ -679,7 +743,8 @@ namespace Nomlas.CompactWorldBoard.Editor
                     ID = world.ID,
                     Name = world.Name,
                     AuthorName = world.AuthorName,
-                    Capacity = world.Capacity
+                    Capacity = world.Capacity,
+                    ThumbnailImageUrl = string.IsNullOrWhiteSpace(world.ThumbnailImageUrl) ? world.ImageUrl : world.ThumbnailImageUrl
                 };
             }
         }
