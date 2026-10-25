@@ -1,122 +1,61 @@
-
 using UnityEditor;
-using UnityEngine;
+using UnityEditor.UIElements;
+using UnityEngine.UIElements;
 
 namespace Nomlas.CompactWorldBoard.Editor
 {
     public abstract class BoardEditor : UnityEditor.Editor
     {
-        private protected abstract void GetProperties();
-        private protected abstract void DrawInspectorGUI();
+        private protected abstract void BuildBoardSettings(VisualElement parent);
 
-        private bool fold;
-
-        private void OnEnable()
+        public override VisualElement CreateInspectorGUI()
         {
-            GetCommonProperties();
-            GetProperties();
+            var root = new VisualElement();
+            BoardUI.ApplyTheme(root);
+            root.AddToClassList("cwb-inspector");
+            var header = BoardUI.Row();
+            header.AddToClassList("cwb-wrap");
+            var title = BoardUI.Text("Compact World Board", "cwb-section-title");
+            title.AddToClassList("cwb-grow");
+            header.Add(title);
+            header.Add(BoardUI.VersionBadge());
+            root.Add(header);
+            BuildBoardSettings(root);
+
+            var portal = BoardUI.Section(root, "ポータル");
+            AddProperty(portal, "canEnter", "入場を許可（通常オフ）");
+            AddProperty(portal, "createDelaySecondsMin", "最小遅延（秒）");
+            AddProperty(portal, "createDelaySecondsMax", "最大遅延（秒）");
+            var warning = new BoardStatusLine("遅延は0以上、最大値は最小値以上に設定してください。") { messageType = BoardMessageKind.Warning };
+            portal.Add(warning);
+            void ValidateDelay()
+            {
+                var min = serializedObject.FindProperty("createDelaySecondsMin").intValue;
+                var max = serializedObject.FindProperty("createDelaySecondsMax").intValue;
+                warning.style.display = min < 0 || max < min ? DisplayStyle.Flex : DisplayStyle.None;
+            }
+            ValidateDelay();
+            root.TrackPropertyValue(serializedObject.FindProperty("createDelaySecondsMin"), _ => ValidateDelay());
+            root.TrackPropertyValue(serializedObject.FindProperty("createDelaySecondsMax"), _ => ValidateDelay());
+
+            var references = BoardUI.Section(root, "参照");
+            AddProperty(references, "portalMarkerPrefab", "ポータルPrefab");
+            AddProperty(references, "portalParent", "ポータルの親");
+            AddProperty(references, "content", "一覧テンプレート");
+            AddProperty(references, "contentParent", "一覧の親");
+            return root;
         }
 
-        public override void OnInspectorGUI()
+        private protected void AddProperty(VisualElement parent, string name, string label)
         {
-            serializedObject.Update();
-
-            DrawUpdateCheckStatus();
-            EditorGUILayout.Space();
-            DrawInspectorGUI();
-            EditorGUILayout.Space(20);
-            EditorGUI.indentLevel++;
-            fold = EditorGUILayout.Foldout(fold, "Default Inspector");
-            if (fold) DrawDefaultInspector();
-            EditorGUI.indentLevel--;
-
-            serializedObject.ApplyModifiedProperties();
+            BoardSettingsUI.AddProperty(parent, serializedObject, name, label);
         }
 
-
-
-        private SerializedProperty userOrGroupProp;
-        private SerializedProperty instanceTypeProp;
-        private SerializedProperty userIdProp;
-        private SerializedProperty groupTypeProp;
-        private SerializedProperty groupIdProp;
-        private SerializedProperty regionProp;
-        private SerializedProperty canEnterProp;
-        private SerializedProperty createDelaySecondsMinProp;
-        private SerializedProperty createDelaySecondsMaxProp;
-
-        private void DrawUpdateCheckStatus()
+        private protected void AddSummary(VisualElement parent, System.Func<string> describe)
         {
-            if (!VPMUpdateCheckCache.IsCompleted)
-            {
-                EditorGUILayout.HelpBox("更新チェック中です。", MessageType.Info);
-                return;
-            }
-
-            if (VPMUpdateCheckCache.LastError != null)
-            {
-                EditorGUILayout.HelpBox($"更新チェックに失敗しました。\n{VPMUpdateCheckCache.LastError.Message}", MessageType.Error);
-                return;
-            }
-
-            var result = VPMUpdateCheckCache.Result;
-            if (result == null)
-            {
-                EditorGUILayout.HelpBox("更新チェック結果がありません。", MessageType.Error);
-                return;
-            }
-
-            if (result.HasUpdate)
-            {
-                EditorGUILayout.HelpBox($"CompactWorldBoardのアップデートが利用可能です。\n{result.CurrentVersion} -> {result.LatestVersion}", MessageType.Warning);
-            }
-            else
-            {
-                EditorGUILayout.HelpBox($"CompactWorldBoardは最新({result.CurrentVersion})です。", MessageType.None);
-            }
-        }
-
-        private void GetCommonProperties()
-        {
-            userOrGroupProp = serializedObject.FindProperty("userOrGroup");
-            instanceTypeProp = serializedObject.FindProperty("instanceType");
-            userIdProp = serializedObject.FindProperty("userId");
-            groupTypeProp = serializedObject.FindProperty("groupType");
-            groupIdProp = serializedObject.FindProperty("groupId");
-            regionProp = serializedObject.FindProperty("region");
-            canEnterProp = serializedObject.FindProperty("canEnter");
-            createDelaySecondsMinProp = serializedObject.FindProperty("createDelaySecondsMin");
-            createDelaySecondsMaxProp = serializedObject.FindProperty("createDelaySecondsMax");
-        }
-
-        private protected void DrawCommonInspectorGUI()
-        {
-            EditorGUILayout.PropertyField(userOrGroupProp, new GUIContent("インスタンスのオーナー"));
-            EditorGUILayout.Space();
-            if (userOrGroupProp.enumValueIndex == (int)UserOrGroup.User)
-            {
-                EditorGUILayout.PropertyField(instanceTypeProp, new GUIContent("インスタンスの種類"));
-                EditorGUILayout.PropertyField(userIdProp, new GUIContent("ユーザーID"));
-            }
-            else if (userOrGroupProp.enumValueIndex == (int)UserOrGroup.Group)
-            {
-                EditorGUILayout.PropertyField(groupTypeProp, new GUIContent("グループの種類"));
-                EditorGUILayout.PropertyField(groupIdProp, new GUIContent("グループID"));
-            }
-
-            EditorGUILayout.Space();
-            EditorGUILayout.PropertyField(regionProp, new GUIContent("サーバーリージョン"));
-        }
-
-        private protected void DrawPortalInspectorGUI()
-        {
-            EditorGUILayout.LabelField("ポータルの設定", EditorStyles.boldLabel);
-            EditorGUI.indentLevel++;
-            EditorGUILayout.PropertyField(canEnterProp, new GUIContent("ポータルに入れるか（通常オフ）"));
-            EditorGUILayout.Space();
-            EditorGUILayout.PropertyField(createDelaySecondsMinProp, new GUIContent("生成までの最小遅延時間（秒）"));
-            EditorGUILayout.PropertyField(createDelaySecondsMaxProp, new GUIContent("生成までの最大遅延時間（秒）"));
-            EditorGUI.indentLevel--;
+            var summary = BoardUI.Text(describe(), "cwb-meta");
+            parent.Add(summary);
+            summary.TrackSerializedObjectValue(serializedObject, _ => summary.text = describe());
         }
     }
 }

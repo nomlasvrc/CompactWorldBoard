@@ -1,30 +1,17 @@
 using UnityEditor;
-using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace Nomlas.CompactWorldBoard.Editor
 {
     [CustomEditor(typeof(InstancesBoard))]
     public class InstancesBoardEditor : BoardEditor
     {
-        private SerializedProperty worldIdProp;
-        private SerializedProperty instanceIdsProp;
-        private protected override void GetProperties()
+        private protected override void BuildBoardSettings(VisualElement parent)
         {
-            worldIdProp = serializedObject.FindProperty("worldId");
-            instanceIdsProp = serializedObject.FindProperty("instanceIds");
-        }
-
-        private protected override void DrawInspectorGUI()
-        {
-            EditorGUILayout.LabelField("生成するインスタンスの設定", EditorStyles.boldLabel);
-            EditorGUI.indentLevel++;
-            EditorGUILayout.PropertyField(worldIdProp, new GUIContent("ワールドID"));
-            EditorGUILayout.Space();
-            EditorGUILayout.PropertyField(instanceIdsProp, new GUIContent("インスタンスID"));
-            DrawCommonInspectorGUI();
-            EditorGUI.indentLevel--;
-            EditorGUILayout.Space();
-            DrawPortalInspectorGUI();
+            var board = (InstancesBoard)target;
+            var section = BoardUI.Section(parent, "インスタンスボード");
+            AddSummary(section, () => $"{board.instanceIds?.Length ?? 0} インスタンス · {BoardSettingsUI.Describe(board)}");
+            section.Add(BoardUI.Button("ボードを編集", () => InstancesBoardWindow.Open(board), "cwb-outlined", "open"));
         }
     }
 }
